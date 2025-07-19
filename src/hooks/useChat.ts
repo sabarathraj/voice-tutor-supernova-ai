@@ -1,6 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { useOpenRouter, OpenRouterMessage } from './useOpenRouter';
 import { useToast } from './use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './useAuth';
 
 export interface ChatMessage {
   id: string;
@@ -24,19 +27,80 @@ export const useChat = (apiKey: string | null) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const { sendMessage, isLoading, error, clearError } = useOpenRouter();
   const { toast } = useToast();
+  const { user, profile } = useAuth();
 
-  // Add welcome message on first load
+  // Load chat history from Supabase
   useEffect(() => {
-    if (messages.length === 0) {
-      const welcomeMessage: ChatMessage = {
-        id: 'welcome',
-        message: "Hello! I'm your AI English tutor. I'm here to help you practice and improve your English in a friendly, supportive way. You can speak to me using the microphone button, or type your questions. What would you like to work on today?",
-        role: 'ai',
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
+    if (user && profile) {
+      loadChatHistory();
+    } else {
+      // Add welcome message for non-authenticated users
+      addWelcomeMessage();
     }
-  }, []);
+  }, [user, profile]);
+
+  const addWelcomeMessage = () => {
+    const welcomeMessage: ChatMessage = {
+      id: 'welcome',
+      message: "Hello! I'm your AI English tutor. I'm here to help you practice and improve your English in a friendly, supportive way. You can speak to me using the microphone button, or type your questions. What would you like to work on today?",
+      role: 'ai',
+      timestamp: new Date()
+    };
+    setMessages([welcomeMessage]);
+  };
+
+  const loadChatHistory = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('timestamp', { ascending: true })
+        .limit(20); // Load last 20 messages
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const chatMessages: ChatMessage[] = data.map(session => ({
+          id: session.id,
+          message: session.message,
+          role: session.role as 'user' | 'ai',
+          timestamp: new Date(session.timestamp)
+        }));
+        setMessages(chatMessages);
+      } else {
+        addWelcomeMessage();
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      addWelcomeMessage();
+    }
+  };
+
+  const saveChatMessage = async (message: string, role: 'user' | 'ai') => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: user.id,
+          message,
+          role,
+          timestamp: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error saving chat message:', error);
+      return null;
+    }
+  };
 
   const sendUserMessage = async (userMessage: string) => {
     if (!apiKey) {
@@ -60,9 +124,17 @@ export const useChat = (apiKey: string | null) => {
 
     setMessages(prev => [...prev, userChatMessage]);
 
-    // Prepare messages for AI
+    // Save user message to database
+    await saveChatMessage(userMessage, 'user');
+
+    // Prepare messages for AI (include user's proficiency level in system prompt if available)
+    let systemPrompt = SYSTEM_PROMPT;
+    if (profile) {
+      systemPrompt += `\n\nThe user's English proficiency level is: ${profile.proficiency_level}. Their native language is: ${profile.native_language}. Adjust your responses accordingly.`;
+    }
+
     const conversationHistory: OpenRouterMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...messages.slice(-10).map(msg => ({
         role: msg.role === 'ai' ? 'assistant' as const : 'user' as const,
         content: msg.message
@@ -83,6 +155,9 @@ export const useChat = (apiKey: string | null) => {
 
       setMessages(prev => [...prev, aiChatMessage]);
 
+      // Save AI message to database
+      await saveChatMessage(aiResponse, 'ai');
+
       // Auto-speak the AI response
       if ('speechSynthesis' in window) {
         setTimeout(() => {
@@ -102,8 +177,33 @@ export const useChat = (apiKey: string | null) => {
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
+    if (user) {
+      try {
+        // Clear chat history from database
+        const { error } = await supabase
+          .from('chat_sessions')
+          .delete()
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Chat Cleared",
+          description: "Your chat history has been cleared.",
+        });
+      } catch (error) {
+        console.error('Error clearing chat:', error);
+        toast({
+          title: "Error",
+          description: "Failed to clear chat history.",
+          variant: "destructive"
+        });
+      }
+    }
+    
     setMessages([]);
+    addWelcomeMessage();
   };
 
   return {
