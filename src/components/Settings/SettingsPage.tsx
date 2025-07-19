@@ -42,7 +42,7 @@ export const SettingsPage = () => {
   const [formData, setFormData] = useState({
     name: profile?.name || '',
     native_language: profile?.native_language || '',
-    proficiency_level: profile?.proficiency_level || 'beginner',
+    proficiency_level: profile?.proficiency_level || 'beginner' as 'beginner' | 'intermediate' | 'advanced',
     daily_goal: profile?.daily_goal || 5,
   });
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -155,7 +155,7 @@ export const SettingsPage = () => {
               <Label>English Proficiency Level</Label>
               <RadioGroup 
                 value={formData.proficiency_level} 
-                onValueChange={(value) => setFormData({ ...formData, proficiency_level: value })}
+                onValueChange={(value) => setFormData({ ...formData, proficiency_level: value as 'beginner' | 'intermediate' | 'advanced' })}
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="beginner" id="settings-beginner" />

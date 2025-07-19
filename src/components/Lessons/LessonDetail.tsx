@@ -50,7 +50,7 @@ export const LessonDetail = ({ lesson, onBack, onComplete }: LessonDetailProps) 
       }
 
       // Update or create lesson progress
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_lesson_progress')
         .upsert({
           user_id: profile.user_id,

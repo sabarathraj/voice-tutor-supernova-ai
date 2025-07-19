@@ -28,7 +28,7 @@ export const LessonsPage = () => {
 
   const fetchLessons = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('lessons')
         .select('*')
         .order('level, order_number');
@@ -51,7 +51,7 @@ export const LessonsPage = () => {
     if (!profile) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('user_lesson_progress')
         .select('*')
         .eq('user_id', profile.user_id);

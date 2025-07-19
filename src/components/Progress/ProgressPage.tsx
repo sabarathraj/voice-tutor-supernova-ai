@@ -38,25 +38,25 @@ export const ProgressPage = () => {
 
     try {
       // Fetch lesson progress
-      const { data: lessonProgress } = await supabase
+      const { data: lessonProgress } = await (supabase as any)
         .from('user_lesson_progress')
         .select('*')
         .eq('user_id', profile.user_id);
 
       // Fetch total lessons count
-      const { data: lessons } = await supabase
+      const { data: lessons } = await (supabase as any)
         .from('lessons')
         .select('id');
 
       // Fetch recent chat sessions
-      const { data: recentSessions } = await supabase
+      const { data: recentSessions } = await (supabase as any)
         .from('chat_sessions')
         .select('*')
         .eq('user_id', profile.user_id)
         .order('timestamp', { ascending: false })
         .limit(10);
 
-      const completedLessons = (lessonProgress as LessonProgress[])?.filter(p => p.status === 'completed') || [];
+      const completedLessons = (lessonProgress as LessonProgress[])?.filter((p: any) => p.status === 'completed') || [];
       const averageScore = completedLessons.length > 0 
         ? completedLessons.reduce((sum, lesson) => sum + (lesson.score || 0), 0) / completedLessons.length
         : 0;

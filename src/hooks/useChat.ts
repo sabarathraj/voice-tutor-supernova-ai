@@ -54,7 +54,7 @@ export const useChat = (apiKey: string | null) => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('chat_sessions')
         .select('*')
         .eq('user_id', user.id)
@@ -64,7 +64,7 @@ export const useChat = (apiKey: string | null) => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const chatMessages: ChatMessage[] = (data as ChatSession[]).map(session => ({
+        const chatMessages: ChatMessage[] = data.map((session: any) => ({
           id: session.id,
           message: session.message,
           role: session.role as 'user' | 'ai',
@@ -84,7 +84,7 @@ export const useChat = (apiKey: string | null) => {
     if (!user) return null;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('chat_sessions')
         .insert({
           user_id: user.id,
@@ -182,7 +182,7 @@ export const useChat = (apiKey: string | null) => {
     if (user) {
       try {
         // Clear chat history from database
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('chat_sessions')
           .delete()
           .eq('user_id', user.id);
