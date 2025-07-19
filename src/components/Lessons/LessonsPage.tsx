@@ -7,27 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, Volume2, CheckCircle, Clock, Star } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LessonDetail } from './LessonDetail';
-
-interface Lesson {
-  id: string;
-  level: string;
-  lesson_type: string;
-  title: string;
-  content: any;
-  order_number: number;
-  created_at: string;
-}
-
-interface LessonProgress {
-  id: string;
-  lesson_id: string;
-  status: string;
-  score: number | null;
-  completed_at: string | null;
-}
+import { Lesson, LessonProgress } from '@/types/database';
 
 export const LessonsPage = () => {
   const { profile } = useAuth();
@@ -51,7 +34,7 @@ export const LessonsPage = () => {
         .order('level, order_number');
 
       if (error) throw error;
-      setLessons(data || []);
+      setLessons((data as Lesson[]) || []);
     } catch (error) {
       console.error('Error fetching lessons:', error);
       toast({
@@ -74,7 +57,7 @@ export const LessonsPage = () => {
         .eq('user_id', profile.user_id);
 
       if (error) throw error;
-      setProgress(data || []);
+      setProgress((data as LessonProgress[]) || []);
     } catch (error) {
       console.error('Error fetching progress:', error);
     }

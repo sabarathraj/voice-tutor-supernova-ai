@@ -4,6 +4,7 @@ import { useOpenRouter, OpenRouterMessage } from './useOpenRouter';
 import { useToast } from './use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { ChatSession } from '@/types/database';
 
 export interface ChatMessage {
   id: string;
@@ -63,7 +64,7 @@ export const useChat = (apiKey: string | null) => {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const chatMessages: ChatMessage[] = data.map(session => ({
+        const chatMessages: ChatMessage[] = (data as ChatSession[]).map(session => ({
           id: session.id,
           message: session.message,
           role: session.role as 'user' | 'ai',

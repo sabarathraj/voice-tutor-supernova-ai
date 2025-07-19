@@ -5,7 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calendar, TrendingUp, Award, Target, BookOpen, MessageCircle } from 'lucide-react';
+import { Calendar, TrendingUp, Award, MessageCircle } from 'lucide-react';
+import { LessonProgress, ChatSession } from '@/types/database';
 
 interface ProgressStats {
   totalLessons: number;
@@ -13,7 +14,7 @@ interface ProgressStats {
   averageScore: number;
   currentStreak: number;
   totalSessions: number;
-  recentSessions: any[];
+  recentSessions: ChatSession[];
 }
 
 export const ProgressPage = () => {
@@ -55,7 +56,7 @@ export const ProgressPage = () => {
         .order('timestamp', { ascending: false })
         .limit(10);
 
-      const completedLessons = lessonProgress?.filter(p => p.status === 'completed') || [];
+      const completedLessons = (lessonProgress as LessonProgress[])?.filter(p => p.status === 'completed') || [];
       const averageScore = completedLessons.length > 0 
         ? completedLessons.reduce((sum, lesson) => sum + (lesson.score || 0), 0) / completedLessons.length
         : 0;
@@ -66,7 +67,7 @@ export const ProgressPage = () => {
         averageScore: Math.round(averageScore),
         currentStreak: profile.current_streak,
         totalSessions: profile.total_sessions,
-        recentSessions: recentSessions || []
+        recentSessions: (recentSessions as ChatSession[]) || []
       });
     } catch (error) {
       console.error('Error fetching progress stats:', error);
@@ -132,7 +133,7 @@ export const ProgressPage = () => {
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-green-100 rounded-full">
-                <BookOpen className="w-6 h-6 text-green-600" />
+                <MessageCircle className="w-6 h-6 text-green-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Lessons Completed</p>
