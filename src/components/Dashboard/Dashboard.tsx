@@ -16,6 +16,7 @@ import {
   Users
 } from 'lucide-react';
 import { VoiceTutorChat } from '@/components/VoiceTutorChat';
+import { WhatsAppVoiceChat } from '@/components/VoiceMessage/WhatsAppVoiceChat';
 import { LessonsPage } from '@/components/Lessons/LessonsPage';
 import { ProgressPage } from '@/components/Progress/ProgressPage';
 import { SettingsPage } from '@/components/Settings/SettingsPage';
@@ -31,17 +32,8 @@ export const Dashboard = () => {
   if (activePage === 'chat') {
     return (
       <div className="h-screen flex flex-col">
-        <div className="p-4 border-b">
-          <Button 
-            variant="outline" 
-            onClick={() => setActivePage('dashboard')}
-            className="mb-2"
-          >
-            ← Back to Dashboard
-          </Button>
-        </div>
         <div className="flex-1">
-          <VoiceTutorChat />
+          <WhatsAppVoiceChat />
         </div>
       </div>
     );

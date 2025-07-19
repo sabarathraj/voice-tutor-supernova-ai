@@ -1,9 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { useOpenRouter, OpenRouterMessage } from './useOpenRouter';
+import { OpenRouterMessage } from './useOpenRouter';
 import { useToast } from './use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useLanguage } from './useLanguage';
 import { ChatSession } from '@/types/database';
 
 export interface ChatMessage {
@@ -11,6 +12,17 @@ export interface ChatMessage {
   message: string;
   role: 'user' | 'ai';
   timestamp: Date;
+  audioUrl?: string;
+  audioBlob?: Blob;
+  originalText?: string;
+  translatedText?: string;
+  language?: string;
+}
+
+interface MessageOptions {
+  language?: string;
+  isNativeMode?: boolean;
+  audioBlob?: Blob;
 }
 
 const SYSTEM_PROMPT = `You are a friendly, patient English teacher helping non-native speakers improve their English. Your responses should be:
@@ -24,11 +36,13 @@ const SYSTEM_PROMPT = `You are a friendly, patient English teacher helping non-n
 
 Keep responses conversational and under 100 words. Always end with a question or encouragement to continue the conversation.`;
 
-export const useChat = (apiKey: string | null) => {
+export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const { sendMessage, isLoading, error, clearError } = useOpenRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const { user, profile } = useAuth();
+  const { currentLanguage, nativeLanguage, isNativeMode } = useLanguage();
 
   // Load chat history from Supabase
   useEffect(() => {
@@ -103,24 +117,19 @@ export const useChat = (apiKey: string | null) => {
     }
   };
 
-  const sendUserMessage = async (userMessage: string) => {
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenRouter API key to start chatting.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    clearError();
+  const sendUserMessage = async (userMessage: string, options: MessageOptions = {}) => {
+    setError(null);
+    setIsLoading(true);
 
     // Add user message to chat
     const userChatMessage: ChatMessage = {
       id: Date.now().toString(),
       message: userMessage,
       role: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
+      audioBlob: options.audioBlob,
+      originalText: userMessage,
+      language: options.language || currentLanguage.code
     };
 
     setMessages(prev => [...prev, userChatMessage]);
@@ -128,53 +137,51 @@ export const useChat = (apiKey: string | null) => {
     // Save user message to database
     await saveChatMessage(userMessage, 'user');
 
-    // Prepare messages for AI (include user's proficiency level in system prompt if available)
-    let systemPrompt = SYSTEM_PROMPT;
-    if (profile) {
-      systemPrompt += `\n\nThe user's English proficiency level is: ${profile.proficiency_level}. Their native language is: ${profile.native_language}. Adjust your responses accordingly.`;
-    }
+    try {
+      // Call backend API to get AI response
+      const response = await fetch('/api/ai-reply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          language: options.language || currentLanguage.code,
+          isNativeMode: options.isNativeMode || isNativeMode,
+          conversationHistory: messages.slice(-10).map(msg => ({
+            role: msg.role === 'ai' ? 'assistant' : 'user',
+            content: msg.message
+          })),
+          userProfile: profile
+        })
+      });
 
-    const conversationHistory: OpenRouterMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages.slice(-10).map(msg => ({
-        role: msg.role === 'ai' ? 'assistant' as const : 'user' as const,
-        content: msg.message
-      })),
-      { role: 'user', content: userMessage }
-    ];
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
 
-    // Get AI response
-    const aiResponse = await sendMessage(conversationHistory, apiKey);
+      const data = await response.json();
 
-    if (aiResponse) {
       const aiChatMessage: ChatMessage = {
         id: Date.now().toString() + '_ai',
-        message: aiResponse,
+        message: data.text,
         role: 'ai',
-        timestamp: new Date()
+        timestamp: new Date(),
+        audioUrl: data.audioUrl
       };
 
       setMessages(prev => [...prev, aiChatMessage]);
+      await saveChatMessage(data.text, 'ai');
 
-      // Save AI message to database
-      await saveChatMessage(aiResponse, 'ai');
-
-      // Auto-speak the AI response
-      if ('speechSynthesis' in window) {
-        setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(aiResponse);
-          utterance.rate = 0.8;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-          window.speechSynthesis.speak(utterance);
-        }, 500);
-      }
-    } else if (error) {
+    } catch (error: any) {
+      setError(error.message);
       toast({
         title: "Error",
-        description: error,
+        description: error.message || "Failed to get AI response",
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
