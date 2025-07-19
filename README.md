@@ -50,6 +50,20 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Environment Setup
+
+Before running the project, you need to set up your Supabase configuration:
+
+1. Create a `.env` file in the root directory
+2. Add your Supabase project URL and API key:
+
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+You can get these values from your Supabase project dashboard under Settings > API.
+
 ## What technologies are used for this project?
 
 This project is built with:
@@ -59,6 +73,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Supabase
 
 ## How can I deploy this project?
 
